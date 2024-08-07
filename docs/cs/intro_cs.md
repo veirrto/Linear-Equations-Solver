@@ -1,3 +1,4 @@
+#cs
 # Dokumentace k zápočtovému programu "Lineární rovnice"
 
 ## 1. Úvod a cíl práce 
