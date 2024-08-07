@@ -54,4 +54,4 @@ Daná funkce se skládá ze vstupní, výpočetní a výstupní části.
 - **výpočetní:** volání funkcí *gaussElim(A,b)*, *back_substituion(A, b)* 
 - **výstupní:** výsledek funkce *back_substituion(A, b)*, a dotaz, jestli uživatel chce pokračovat ve hře 
 
-***Celková čásová složitost: $O(n^3)$ (polynomiální)*** 
+**Celková čásová složitost: $O(n^3)$ (polynomiální)**
