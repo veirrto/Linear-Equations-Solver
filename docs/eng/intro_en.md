@@ -1,4 +1,4 @@
-#cs
+#un
 
 # Documentation for the credit program "Linear Equations"
 
