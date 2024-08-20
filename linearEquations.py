@@ -1,4 +1,4 @@
-"Linear Equations Solver"
+"Zapoctovy program - Linearni funkce"
 
 import fractions
 from fractions import Fraction
@@ -6,14 +6,14 @@ from fractions import Fraction
 import os
 
 
-"""GAUSSIAN ELIMINATION"""
+"""GAUSSOVA ELIMINACE"""
 
 """ 
-1. helper functions used in gaussElim
+1. pomocné funkce použité v hlavní funkci gaussElim
 2. fce gaussElim
 """
 
-#swap rows of a matrix - for gaussElim
+#prohod radky matice - pro funkci gaussElim 
 def swapRowsMatrix(mat, i, j):
 
     """
@@ -225,13 +225,22 @@ def delete_plus_beginning(sl: str):
 
     #vstup: vypis reseni (sl)
     #vystup: sl neobsahuje na zacatku + (pokud cislo neni kladne)
-
     for i in range(0, 2): #najdeme plus na zacatku vypisu reseni 
         if (sl[i] == '+'):
             sl = sl.replace(sl[i], "", 1) #nahradime plusko prazdnym prostorem, 1krat
             return sl
     return sl #pokud neni zadne plusko
 
+
+#odstraň mezery - pro účel testování
+def delete_spaces(sl: str):
+    #vstup: string
+    #vystup: string bez mezer
+
+    sl = sl.replace(" ", "")
+
+    return sl 
+    
     
 "Zpětná substituce"
 def back_substitution(mat, b): #A, b jsou v REF tvaru
@@ -301,16 +310,21 @@ def back_substitution(mat, b): #A, b jsou v REF tvaru
             #do reseni pridame znamenko x{i} a x{i}
             sol[col] += get_sign(x[col]) + str(abs(x[col]))
 
-    #pokud nulový řádek, ale nenulová pravá strana = soustava nemá řádné řešení. Nemusime rekurzivne volat. 
-    if(is_row_zero(mat[m-1]) and b[m-1] != 0):
-        print("Žádné (0 řešení)")
-        return 
+
+     #pokud nulový řádek, ale nenulová pravá strana = soustava nemá řádné řešení. Nemusime rekurzivne volat. 
+    for i in range(m):
+        if(is_row_zero(mat[i]) and b[i] != 0):
+            print("Žádné (0 řešení)")
+            return 
     
     rec(row, col) #rekurze - na zacatku rekurzivne prochazime matici, pak hledane reseni 
 
     for i in range(len(sol)):
-        sol[i] = delete_plus_beginning(sol[i]) #odstran plusko na zacatku vypisu x{i} - esteticky ucel 
-        print(f"x{i+1}: " + str(sol[i])) #vytisknuti x{i}
+        sol[i] = delete_plus_beginning(sol[i]) #odstran plus
+        sol[i] = delete_spaces(sol[i]) #odstran mezery
+
+
+    return sol 
     
 
 """/////////////////////////////////////////////////////////////////////////////////////////////////////////////"""
@@ -327,17 +341,11 @@ def set_dict_to_default(dict):
     return dict 
 
 
-
 #uprav vyraz
 def edit_expression(exp: str, col: int):
 
     #napr. 3x+2y = 10(5 + x) + 5y
     # vrati: '-7x - 3y = 50'
-
-    """
-    vstup: vyraz (exp), sloupec matice (col) 
-    vystup: vypis reseni (pomoci "col")
-    """
 
     dict = { #slovnik, ve kterem muzeme obnovovat hodnoty promennych
         'x': 0,
@@ -345,7 +353,7 @@ def edit_expression(exp: str, col: int):
         'z': 0
     }
 
-    braces_dict = { #pomocny slovnik - stejny ucel jako dict, ale uvnitr zavorek 
+    braces_dict = { #stejny ucel jako dict, ale uvnitr zavorek 
         'x': 0,
         'y': 0,
         'z': 0
@@ -357,28 +365,30 @@ def edit_expression(exp: str, col: int):
     ops = [] #zasobnik na operatory
     val = [] #zasobnik na cisla 
     param = [] #zasobnik na promenne
+    braces_param = [] #zasobnik na promenne v zavorce
     i = 0 #counter
     before_brac = 0 #number before brackets
     const_var = 0 #konstanta 
     sign = "+" #znamenko
+    temp = 0 #pro zmenu koeficientu promenne v zavorkach, pokud se ta vyskytuje vice nez jednou
 
     #prochazime cely retezec
     while (i < len(exp)):
 
-        """pokud je to mezera"""
+        #pokud je to mezera
         if (exp[i] == " "):
             i += 1 
             continue
 
 
-        """pokud znak je "leva zavorka"""
+        #pokud znak je "leva zavorka"
         elif (exp[i] == "("):
             ops.append(exp[i]) #pridej do zasobniku operatoru
             sign = "+"
             before_brac = val[-1]
 
 
-        """pokud znak je cislo"""
+        #pokud znak je cislo
         elif (exp[i].isdigit()):
 
             v = 0
@@ -406,58 +416,71 @@ def edit_expression(exp: str, col: int):
                 i += 1
                 continue
 
-            #pokud cislo nema pred sebou promennou, pricteme ho k c 
+            #pokud nema pred sebou promennou, pricteme hodnotu k c 
             if (exp[i + 1] not in symbols):
                 if ("=" in ops):
                     const_var += val[-1]
+                    #-abs(val[-1])
                 else:
                     const_var -= val[-1]
 
            
-        """pokud znak je x, y, nebo z"""
+        #pokud znak je x, y, nebo z
         elif (exp[i] in symbols):
             param.append(exp[i])
-            #pokud je promenna v zavorkach (a tedy v zasobniku je before_brac, ktery pozdeji odstranime)
-            #=> vypocitame koeficient promenne do pomocneho slovniku
-            if (before_brac in val): 
-                if (not exp[i-1].isdigit()): #pokud promenna nema pred sebou koeficient, ale znamenko 
-                    if (sign == "-"): #pokud je znamenko zaporne, odecteme 1 u teto promenne
+            #pokud je promenna v zavorkach, vypocitame jeji koeficient do pomocneho slovniku
+            if (before_brac in val):
+                
+                temp = braces_dict[exp[i]]
+
+                #pokud nemel pred tim koeficient 
+                if (not exp[i-1].isdigit()):
+                    if (sign == "-"):
                         val.append(-1)
                         braces_dict[exp[i]] -= 1
                     else:
-                        val.append(1) #pokud je znamenko kladne, pricteme 1 k teto promenne
+                        val.append(1) 
                         braces_dict[exp[i]] += 1
                 else:
-                    braces_dict[exp[i]] += val[-1] #pricteme cislo, ktere je v zavorkach, k promenne
+                    braces_dict[exp[i]] += val[-1]
+                
 
-            #pokud vne zavorek, ale promenna nema koeficient 
-            elif ((not exp[i-1].isdigit())): 
-                    if (sign == "-" and "=" in ops): #pokud je znamenko minus a "=" je v zasobniku
-                        val.append(-1) 
-                        dict[exp[i]] += 1 #pricteme jednicku
+                #pokud promenna uz byla v zavorce 
+                if (exp[i] in braces_param): 
+                    brace_ind = val.index(before_brac)
+                    ind = val.index(temp, brace_ind) 
+                    val.pop(ind) #odstranime hodnotu
+                    val[-1] = braces_dict[exp[i]]
+                else:
+                    braces_param.append(exp[i])
+
+                    
+
+            #pokud vne zavorek, ale promenna nema koeficient pred sebou
+            elif ((not exp[i-1].isdigit())):
+                    if (sign == "-" and "=" in ops):
+                        val.append(-1)
+                        dict[exp[i]] += 1
                     elif (sign == "-" or (sign == "+" and "=" in ops)): 
-                        #pokud znamenko je minus a "=" neni v zasobniku, nebo plus a "=" je 
-                        val.append(-1) 
-                        dict[exp[i]] -= 1 #odcteme jednicku
-                    else: 
-                        #v ostatnich pripadech (napr. kdyz znamenko je plus, a "=" neni v zasobniku)
+                        val.append(-1)
+                        dict[exp[i]] -= 1
+                    else:
                         val.append(1) 
-                        dict[exp[i]] += 1 #pricteme jednicku
-
+                        dict[exp[i]] += 1
             #pokud ma koeficient 
             else:
-                #pokud bylo rovnitko, prevedeme hodnotu na levou stranu
+                #pokud bylo rovnitko, prevedeme hodnotu na druhou stranu
                 if ("=" in ops):
-                    dict[exp[i]] -= val[-1] 
+                    dict[exp[i]] -= val[-1]
                 else:
-                    dict[exp[i]] += val[-1] #jinak pricteme hodnotu (jsme na leve strane)
+                    dict[exp[i]] += val[-1]
+                
 
 
-        """pokud znak je pravá zavorka"""
+        #pokud znak je pravá zavorka 
         elif (exp[i] == ")"):
 
-            #cyklus, ve kterem postupne odstranujeme cisla z val (zasobniku), promenne z param (zasobniku),
-            # a menime hodnoty const_var, a ve slovniku
+            #cyklus, ve kterem postupne odstranujeme cisla z val (zasobniku), promenne z param (zasobniku), a menime hodnoty u c a ve slovniku
 
             while(len(ops) != 0 and val[-1] != before_brac):
 
@@ -470,20 +493,21 @@ def edit_expression(exp: str, col: int):
                         dict[param[-1]] += v * before_brac
                     param.pop()
                 else: 
-                    if ("=" in ops): #pokud jsme na prave strane
-                        const_var += v * before_brac #pricteme novou hodnotu ke konstante
+                    if ("=" in ops):
+                        const_var += v * before_brac #konstanta, ktera bude na druhe strane
                     else:
-                        const_var -= v * before_brac #pokud na leve s, odecteme hodnotu 
+                        const_var -= v * before_brac
                 
-                ops.pop() 
+                ops.pop()
 
-            val.pop() #odstrani before_brac, nebo-li koeficient pred zavorkami 
+            val.pop() #odstran before_brac, nebo-li koeficient pred zavorkami 
 
-            #obnovi vsechny hodnoty pomocneho slovniku na puvodni
+            #obnov vsechny hodnoty na puvodni
             braces_dict = set_dict_to_default(braces_dict)
+            braces_param.clear()
 
                 
-        """pokud znak je operator: +-*/="""
+        #pokud znak je operator: +-*/=
         else:
 
             if (exp[i] == "-"):
@@ -495,7 +519,7 @@ def edit_expression(exp: str, col: int):
 
         i += 1
 
-    #vytiskne odpověď 
+    #vytiskni odpověď 
     new_str = ""
     if (col == 3): 
         new_str = f"{dict["x"]}x + {dict["y"]}y = {const_var} "
@@ -543,39 +567,43 @@ def main():
 
     game_on = True
     count = 0
+
+
+    "vstup"
+
+
+    text = """VÍTÁME TĚ V \"LINEAR EQUATIONS SOLVER\" (ŘEŠIČ LINEÁRNÍCH ROVNIC). \n 
+
+    Linear Equations Solver funguje tak, že do konzole zadáš soustavu rovnic, \n
+    a program Ti vytiskne řešení dané soustavy. \n 
+    Můžeš zadat soustavu rovnic buď v podobě: \n
+        - Textové (MIN. rozměr: 2x3 (3. sloupec - pravá strana rovnice), MAX. rozměr: 3x4) - s proměnnými x, y, z \n
+            př. 2x + 3y = 5 \n
+                x  - y  = 1 \n
+            
+            V textovém zápisu můžete používat závorky. Program ale nepracuje s vnořenými závorkami. 
+            
+        - Maticové (MIN. rozměr: 2x3 (3. sloupec - pravá strana rovnice), MAX. rozměr: 9x10) - čísla\n
+            př. (poslední sloupec - pravá strana) \n
+                2 3 5 \n
+                1 -1 1 \n
+
+    Pro prokračování ve hře, napište A nebo a (nezáleží na velikosti písmene.)
+    Pro ukončení Řešiče, odpověďte N/n (nebo jakýmkoliv znakem) 
+
+    """
+
+    print(text)
+
+    
+    print("\n")
     
 
     while (game_on): 
 
 
-        "vstup"
-
-
-        text = """VÍTÁME TĚ V \"LINEAR EQUATIONS SOLVER\" (ŘEŠIČ LINEÁRNÍCH ROVNIC). \n 
-
-        Linear Equations Solver funguje tak, že do konzole zadáš soustavu rovnic, \n
-        a program Ti vytiskne řešení dané soustavy. \n 
-        Můžeš zadat soustavu rovnic buď v podobě: \n
-            - Textové (MIN. rozměr: 2x3 (3. sloupec - pravá strana rovnice), MAX. rozměr: 3x4) - s proměnnými x, y, z \n
-                př. 2x + 3y = 5 \n
-                    x  - y  = 1 \n
-                
-            - Maticové (MIN. rozměr: 2x3 (3. sloupec - pravá strana rovnice), MAX. rozměr: 9x10) - čísla\n
-                př. (poslední sloupec - pravá strana) \n
-                    2 3 5 \n
-                    1 -1 1 \n
-
-        Pro prokračování ve hře, napište A nebo a (nezáleží na velikosti písmene.)
-        Pro ukončení Řešiče, odpověďte N/n (nebo jakýmkoliv znakem) 
-
-        """
-
-        print(text)
-
-        
-        print("\n")
-
         #1. zadej rozmery matice (pocet rovnic a promennych), vektor prave strany '
+        print("\n")
         print("Zadej rozměry soustavy rovnic (na samostatné řádky): \n")
         print("Počet řádků: ")
         m = input("m = ")
@@ -631,7 +659,8 @@ def main():
 
                 #pak projdeme pres radek a zjistime, jestli obsahuje pouze cisla. 
                 for j in range(len(x)):
-                    if (not x[j].isnumeric()): #pokud neni to cislo, tak program skonci 
+                    abs_xj = x[j].lstrip("-")
+                    if (not abs_xj.isnumeric()): #pokud neni to cislo, tak program skonci 
                         print("V řádku musí být pouze čísla. Program končí.") 
                         to_run = True
                         break 
@@ -695,22 +724,40 @@ def main():
 
         "vypočet"
         rref_A, rref_b = gaussElim(A, b) 
-        back_substitution(A, b)
+        solution = back_substitution(A, b)
+
+        "vytiskni reseni"
+        if (solution != None):
+            for i in range(len(solution)):
+                print(f"x{i+1}: " + str(solution[i])) #vytisknuti x{i}
 
         "vystup"
 
         print("\nChceš opakovat hru? (A / N)")
         usr = input().upper()
 
+
+
         if (usr == 'A'):
-            os.system('cls')
+            continue 
         else:
             game_on = False
             #break 
 
 
+
 if __name__=="__main__":
-    main()
+    main() 
+    
+
+
+
+
+
+    
+
+
+    
 
 
 
